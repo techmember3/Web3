@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>web3 wallet connect Dashboard</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        #ethereum-balance, #polygon-balance {
+            margin-top: 20px;
+        }
+        button {
+            display: block;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>web3 wallet connect Dashboard</h1>
+    <div id="ethereum-balance"></div>
+    <div id="polygon-balance"></div>
+    <button id="connect-wallet">Connect Wallet</button>
+    <button id="fetch-balances">Fetch Balances</button>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            let web3;
+           const connectWalletButton = document.getElementById('connect-wallet');
+            connectWalletButton.addEventListener('click', async () => {
+                try {
+                    // Modern DApp browsers
+                    if (window.ethereum) {
+                        web3 = new Web3(window.ethereum);
+                        await window.ethereum.request({ method: 'eth_requestAccounts' });
+                        console.log('Wallet connected!');
+                    }
+                    // Legacy DApp browsers
+                    else if (window.web3) {
+                        web3 = new Web3(window.web3.currentProvider);
+                        console.log('Legacy wallet connected!');
+                    }
+                    // Non-DApp browsers
+                    else {
+                        console.error('MetaMask not detected.');
+                    }
+                } catch (error) {
+                    console.error('Failed to connect wallet:', error);
+                }
+            });
+            document.getElementById('fetch-balances').addEventListener('click', fetchBalances);
+            async function fetchBalances() {
+                if (web3) {
+                    try {
+                        const accounts = await web3.eth.getAccounts();
+                        const [ethereumBalance, polygonBalance] = await Promise.all([
+                            web3.eth.getBalance(accounts[0]),
+                            // Replace with the address of the Polygon token you want to query
+                            getTokenBalance('0xf8e81D47203A594245E36C48e151709F0C19fBe8', accounts[0])
+                        ]);
+                        document.getElementById('ethereum-balance').innerText = `Ethereum Balance: ${web3.utils.fromWei(ethereumBalance, 'ether')} ETH`;
+                        document.getElementById('polygon-balance').innerText = `Polygon Balance: ${web3.utils.fromWei(polygonBalance, 'ether')} MATIC`;
+                    } catch (error) {
+                        console.error('Failed to fetch balances:', error);
+                    }
+                } else {
+                    console.error('Web3 not initialized.');
+                }
+            }
+            async function getTokenBalance(tokenAddress, accountAddress) {
+                const TokenABI = [[
+                {
+                    "inputs": [
+                        {
+                            "internalType": "address payable",
+                            "name": "_recipient",
+                            "type": "address"
+                        },
+                        {
+                            "internalType": "uint256",
+                            "name": "_amount",
+                            "type": "uint256"
+                        }
+                    ],
+                    "name": "sendEther",
+                    "outputs": [],
+                    "stateMutability": "payable",
+                    "type": "function"
+                },
+                {
+                    "inputs": [],
+                    "stateMutability": "nonpayable",
+                    "type": "constructor"
+                },
+                {
+                    "stateMutability": "payable",
+                    "type": "receive"
+                },
+                {
+                    "inputs": [],
+                    "name": "getBalance",
+                    "outputs": [
+                        {
+                            "internalType": "uint256",
+                            "name": "",
+                            "type": "uint256"
+                        }
+                    ],
+                    "stateMutability": "view",
+                    "type": "function"
+                },
+                {
+                    "inputs": [],
+                    "name": "owner",
+                    "outputs": [
+                        {
+                            "internalType": "address",
+                            "name": "",
+                            "type": "address"
+                        }
+                    ],
+                    "stateMutability": "view",
+                    "type": "function"
+                }
+            ]
+                ];
+                const contract = new web3.eth.Contract(TokenABI, tokenAddress);
+                return await contract.methods.balanceOf(accountAddress).call();
+            }
+        });
+    </script>
+</body>
+</html>
